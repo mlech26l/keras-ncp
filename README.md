@@ -5,6 +5,8 @@
 ![PyPI version](https://img.shields.io/pypi/v/keras-ncp)
 ![downloads](https://img.shields.io/pypi/dm/keras-ncp)
 
+![alt](misc/mark.png)
+
 [Open Access Paper](https://publik.tuwien.ac.at/files/publik_292280.pdf)
 
 Neural Circuit Policies (NCPs) are designed sparse recurrent neural networks loosely inspired by the nervous system of the organism [C. elegans](http://www.wormbook.org/chapters/www_celegansintro/celegansintro.html). 

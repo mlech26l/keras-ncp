@@ -5,7 +5,7 @@
 ![PyPI version](https://img.shields.io/pypi/v/keras-ncp)
 ![downloads](https://img.shields.io/pypi/dm/keras-ncp)
 
-![alt](misc/mark.png)
+[![name](misc/mark.png)](https://github.com/mlech26l/ncps)
 
 [Open Access Paper](https://publik.tuwien.ac.at/files/publik_292280.pdf)
 

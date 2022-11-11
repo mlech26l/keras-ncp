@@ -1,151 +1,19 @@
 # Neural Circuit Policies Enabling Auditable Autonomy
 
-[![DOI](https://zenodo.org/badge/290199641.svg)](https://zenodo.org/badge/latestdoi/290199641)
-![pyversion](misc/pybadge.svg)
-![PyPI version](https://img.shields.io/pypi/v/keras-ncp)
-![downloads](https://img.shields.io/pypi/dm/keras-ncp)
 
 [![name](misc/mark.png)](https://github.com/mlech26l/ncps)
 
-[Open Access Paper](https://publik.tuwien.ac.at/files/publik_292280.pdf)
-
-Neural Circuit Policies (NCPs) are designed sparse recurrent neural networks loosely inspired by the nervous system of the organism [C. elegans](http://www.wormbook.org/chapters/www_celegansintro/celegansintro.html). 
-This page is a description of the Keras (TensorFlow 2 package) reference implementation of NCPs.
-For reproducibility materials of the paper see [the corresponding subpage](https://github.com/mlech26l/keras-ncp/tree/master/reproducibility/README.md).
-
-![alt](misc/wirings.png)
-
-## Update September 2022: Active development has moved to the repo [ncps](https://github.com/mlech26l/ncps)
-
-The rationale behind the move is that the renaming emphasizes:
-
-- PyTorch as first-class citizen (instead of the focus on keras)
-- Separating the reproducibility materials of the paper from the package
-
-## Installation
 
 ```bash
-# pip install keras-ncp # keras-ncp is deprecated, new new package is called "ncps"
-pip install ncps
+pip3 install -U ncps
 ```
 
-## Update January 2021: Experimental PyTorch support added
+[Docs](https://ncps.readthedocs.io/en/latest/)  
+[PyPI package repo](https://github.com/mlech26l/ncps)  
+[Open Access Paper](https://publik.tuwien.ac.at/files/publik_292280.pdf)  
 
-With ```keras-ncp``` version 2.0 experimental PyTorch support is added. There is an example on how to use the PyTorch binding in the [examples](https://github.com/mlech26l/keras-ncp/blob/master/examples/pt_example.py) folder and a Colab notebook linked below.
-**Note** that the support is currently experimental, which means that it currently misses some functionality (e.g., no plotting, no irregularly sampled time-series,etc. ) and might be subject to breaking API changes in future updates.
+Neural Circuit Policies (NCPs) are designed sparse recurrent neural networks loosely inspired by the nervous system of the organism [C. elegans](http://www.wormbook.org/chapters/www_celegansintro/celegansintro.html). 
 
-
-### Breaking API changes between 1.x and 2.x
-
-The TensorFlow bindings have been moved to the ```tf``` submodule. Thus the only breaking change regarding the TensorFlow/Keras bindings concern the import
-
-
-```python
-# Import shared modules for wirings, datasets,...
-import kerasncp as kncp
-# Import framework-specific binding
-from kerasncp.tf import LTCCell      # Use TensorFlow binding
-(from kerasncp.torch import LTCCell  # Use PyTorch binding)
-```
-
-## Colab notebooks
-
-We have created a few Google Colab notebooks for an interactive introduction to the package
-
-- [Google Colab: Basic usage](https://colab.research.google.com/drive/1IvVXVSC7zZPo5w-PfL3mk1MC3PIPw7Vs?usp=sharing)
-- [Google Colab: Stacking NCPs with other layers](https://colab.research.google.com/drive/1-mZunxqVkfZVBXNPG0kTSKUNQUSdZiBI?usp=sharing)
-- [NEW: Google Colab: Pytorch binding](https://colab.research.google.com/drive/1VWoGcpyqGvrUOUzH7ccppE__m-n1cAiI?usp=sharing)
-
-## Usage: the basics
-
-The package is composed of two main parts: 
-
-- The LTC model as a ```tf.keras.layers.Layer``` or ```torch.nn.Module``` RNN cell
-- An wiring architecture for the LTC cell above
-
-The wiring could be fully-connected (all-to-all) or sparsely designed using the NCP principles introduced in the paper.
-As the LTC model is expressed in the form of a system of [ordinary differential equations in time](https://arxiv.org/abs/2006.04439), any instance of it is inherently a recurrent neural network (RNN).
-
-Let's create a LTC network consisting of 8 fully-connected neurons that receive a time-series of 2 input features as input. Moreover, we define that 1 of the 8 neurons acts as the output (=motor neuron):
-
-```python
-from tensorflow import keras
-import kerasncp as kncp
-from kerasncp.tf import LTCCell
-
-wiring = kncp.wirings.FullyConnected(8, 1)  # 8 units, 1 motor neuron
-ltc_cell = LTCCell(wiring) # Create LTC model
-
-model = keras.Sequential(
-    [
-        keras.layers.InputLayer(input_shape=(None, 2)), # 2 input features
-        keras.layers.RNN(ltc_cell, return_sequences=True),
-    ]
-)
-model.compile(
-    optimizer=keras.optimizers.Adam(0.01), loss='mean_squared_error'
-)
-
-```
-
-
-We can then fit this model to a generated sine wave, as outlined in the tutorials ([open in Google Colab](https://colab.research.google.com/drive/1IvVXVSC7zZPo5w-PfL3mk1MC3PIPw7Vs?usp=sharing)).
-
-![alt](misc/sine.webp)
-
-## More complex architectures
-
-We can also create some more complex NCP wiring architecture. 
-Simply put, an NCP is a 4-layer design vaguely inspired by the wiring of the [C. elegans worm](https://wormwiring.org/). The four layers are sensory, inter, command, and motor layer, which are sparsely connected in a feed-forward fashion. On top of that, the command layer realizes some recurrent connections. As their names already indicate, the sensory represents the input and the motor layer the output of the network.
-
-We can also customize some of the parameter initialization ranges, although the default values should work fine for most cases.
-```python
-ncp_wiring = kncp.wirings.NCP(
-    inter_neurons=20,  # Number of inter neurons
-    command_neurons=10,  # Number of command neurons
-    motor_neurons=5,  # Number of motor neurons
-    sensory_fanout=4,  # How many outgoing synapses has each sensory neuron
-    inter_fanout=5,  # How many outgoing synapses has each inter neuron
-    recurrent_command_synapses=6,  # Now many recurrent synapses are in the
-    # command neuron layer
-    motor_fanin=4,  # How many incoming synapses has each motor neuron
-)
-ncp_cell = LTCCell(
-    ncp_wiring,
-    initialization_ranges={
-        # Overwrite some of the initialization ranges
-        "w": (0.2, 2.0),
-    },
-)
-```
-
-We can then combine the NCP cell with arbitrary ```keras.layers```, for instance to build a powerful image sequence classifier:
-
-```python
-height, width, channels = (78, 200, 3)
-
-model = keras.models.Sequential(
-    [
-        keras.layers.InputLayer(input_shape=(None, height, width, channels)),
-        keras.layers.TimeDistributed(
-            keras.layers.Conv2D(32, (5, 5), activation="relu")
-        ),
-        keras.layers.TimeDistributed(keras.layers.MaxPool2D()),
-        keras.layers.TimeDistributed(
-            keras.layers.Conv2D(64, (5, 5), activation="relu")
-        ),
-        keras.layers.TimeDistributed(keras.layers.MaxPool2D()),
-        keras.layers.TimeDistributed(keras.layers.Flatten()),
-        keras.layers.TimeDistributed(keras.layers.Dense(32, activation="relu")),
-        keras.layers.RNN(ncp_cell, return_sequences=True),
-        keras.layers.TimeDistributed(keras.layers.Activation("softmax")),
-    ]
-)
-model.compile(
-    optimizer=keras.optimizers.Adam(0.01),
-    loss='sparse_categorical_crossentropy',
-)
-```
 
 ```bib
 @article{lechner2020neural,
@@ -159,3 +27,201 @@ model.compile(
   publisher={Nature Publishing Group}
 }
 ```
+
+# Reproducibility materials for the paper *Neural Circuit Policies Enabling Auditable Autonomy*
+
+This page serves the purpose of documenting the code, materials, and data used for performing the experiments reported in the paper.
+
+Note that the python code for training and evaluating the models has been written over a period of more than two years and a lot of changes have been made during that time. 
+As a result, there are a few caveats with the code:
+
+- The code contains a lot *legacy code*, which is not used anymore (e.g., some parts of the data augmentation).
+- The code is very sparsely documented
+- The code is written in TensorFlow 1.X (tested with 1.14)
+
+For a polished, much more user-friendly, TensorFlow 2.x reference implementation of NCPs, we refer to [the main project page](https://github.com/mlech26l/keras-ncp/).
+
+## Introduction
+
+The following page describes the ```ncp_lab_notebook.tar.gz``` archive that was submitted alongside the paper for the peer-review.
+To ensure that we do not temper the archive after publication, the SHA-256 sum the file is ```0f22b3d7b2986e343e1d3012f51fdf09f876cde2f1f0a6fdb850acded4fc387e```.
+As the full archive is around 200 GB large, we are unable to publicly host all parts. For inquiries requesting the full archive please drop an [email](mathias.lechner@ist.ac.at).
+
+We are able to publicly host the complete python training code and Matlab analysis code [here (87 MB)](https://seafile.ist.ac.at/f/ca20fdb80a7d44af9817/?dl=1).
+
+Moreover, we are able to publicly host the code as above and the data generated by the active test runs that were analysis by our Matlab scripts [here (1.5 GB)](https://seafile.ist.ac.at/f/f8faadac60794200a0ae/?dl=1)
+
+In particlar, both smaller archives linked above do not include the training data (passive and active), as well as the rosbag recordings from the real car.
+
+Note that the Apache License 2.0 of this repository does not apply to the reproducibility materials downloadable by the links above. The copyright of the reproducibility materials belongs to the authors of the paper.
+
+## Archive structure
+
+Generally, this archive contains the materials to do the following three things:
+
+1. Train various models on the *passive dataset*
+2. Train various models on the *active dataset*
+3. Analyze the logs of the control of the car by the active models
+
+Not included in the archive is the code stack that runs on the car and is used to collect the training data, as well as deploy the models for controlling the real car.
+
+## System description and external libraries used
+
+All models were trained on Ubuntu 16.04 machines using Python3.5 with TensorFlow 1.14.0.
+Data analysis was performed using Python2.7, Python3.6, and Matlab 2019a.
+
+## Directory structure description
+
+This archive is composed of 11 sub-directories:
+
+- ```training_scripts```: Contains the code to train the passive and active models
+- ```active_test_analysis```: Contains the  code to analyze the logs produced by testing the models on the active steering test
+- ```pretrained_active_models```: Pretrained weights of the models tested on the active steering test   
+- ```pretrained_passive_models```: Pretrained weights of the models tested on the passive evaluation
+- ```training_data_active```: Training data for the active steering test
+- ```training_data_passive```: Training data for the passive steering test
+- ```active_test_recordings```: Logs produced by testing the models on the active steering test
+- ```Lipschitz_analysis```: contains code to reproduce the smoothness analysis of the RNN dynamics in active steering test
+- ```Neural_activity_analysis```: contains code to project neural activity of different RNNs on the road during active steering test
+- ```PCA_analysis```: contains code to compute principle component analysis on RNN's internal dynamics
+- ```SSIM_Crash_analysis```: contains code to compute the structural similarity index of saliency maps while input noise variance is increasing. 
+- ```analysis_data```: data for the Lipschitz, neural activity, PCA, and SSIM analysis
+- ```saliency_widget```: HTML visualization to inspect the attention maps of all active test recordings
+
+## Auditing the training data
+
+Ideally, we want to have exactly one dataset that we can use for passive evaluation as well as train our model for the active test.
+However, in our scenario, this is not possible as the roads at our private active test track are from a different probability distribution than the streets observed on public roads. In particular, the roads at our private test track are narrower than standard public roads and furthermore lack any lane markers. 
+Consequently, no model was observed to generalize well from training on data of public roads to an evaluation on the private test track.
+
+As a result, we collected a separate training set by recording a human driving that navigated through the private test track.
+We train all models for the active test on only the data from the private test track. Our rationale behind this choice is that we have plenty of passive data (from public roads), whereas the private test track is limited in diversity and size. Therefore, training a model on both the data obtained on public roads and the data obtained on the private test track would create an imbalanced towards an excess of public road training data.
+
+All training samples need to be cropped and rescaled before feeding them into any neural network.
+
+The data itself are located in the directories ```training_data_active``` and ```training_data_passive``` respectively in the form of h5-files.
+
+## Auditing the training pipeline
+
+Generally, we want to share as much code as possible for training the active and the passive model in order to have the same conditions in both scenarios.
+However, due to the difference in objectives in both cases, there are some files in the training pipelines that are not shared.
+In particular, for the passive evaluation, we perform a 10-fold cross-testing evaluation, whereas, in the active evaluation, we have a single training set and test the model on the real car.
+Consequently, exactly the data loading scripts, as well as the logging scripts, are the two files that are not shared between the passive and the active training pipeline.
+The logging code is interleaved with the main training scripts. Therefore we have the following partitioning:
+
+### Active test only files:
+
+- ```active_data_provider.py```: Loads the training data for the active test
+- ```train_active_test.py```: Main file to train models for the active test
+
+### Passive test only files:
+
+- ```passive_test_data_provider.py```: Loads the training data for the passive test and performs splitting for the cross-testing
+- ```run_passive_test.py```: Main file to train models for the passive test
+
+### Files that are shared between the training pipeline of the passive and active test 
+
+- ```augmentation_utils.py```: Code to perform the shadow augmentation and the sample weighting
+- ```perspective_transformation.py```: Code to crop and adjust the input images before processing them by the models
+- ```convolution_head.py```: Implementation of the convolutional layers that precede each RNN model
+- ```wormflow3.py```: Implementation of the NCP model
+- ```models/cnn_model.py```: Implementation of the feedforward convolutional neural network model used as a baseline
+- ```models/rnn_models.py```: Implementation of the Vanilla RNN, CT-RNN, GRU, and CT-GRU
+- ```models/e2e_lstm.py```: Implementation of the LSTM + wrapper to make it compatible to the training pipeline
+- ```models/e2e_worm_pilot.py```: Wrapper that makes the NCP model compatible to the training pipeline
+- ```models/e2e_rnn.py```: Wrapper that makes various RNNs compatible to the training pipeline
+
+## Auditing the model implementation
+
+Implementation of the NCP model, including the ODE solver and architectural design, is implemented in the file ```wormflow3.py```.
+Furthermore, this module contains methods to export the parameters and hidden states of an NCP model.
+
+## Auditing the data analysis code
+
+The logs of the active steering test were collected in the form of [rosbag files](http://wiki.ros.org/rosbag).
+The primary module to analyze these rosbags is the file ```driving_record.py``` located in the ```active_test_analysis``` sub-directory.
+
+## Performing the passive evaluation
+
+The main file for running a passive evaluation run is ```run_passive_test.py```.
+In essence, this module accepts two command-line arguments:
+```--model``` which defines the type of model and ```--experiment_id``` which defines the identifier of the 10-fold cross-testing run.
+Valid options for the ```--model``` argument are
+
+- ```cnn```: Feedforward CNN
+- ```gru```: Gated-Recurrent-Unit (GRU) custom implementation
+- ```tf_gru```: Gated-Recurrent-Unit (GRU) TensorFlow built-in implementation
+- ```lstm```: Long-Short-Term-Memory (LSTM) TensorFlow built-in implementation
+- ```vanilla```: Vanilla RNN
+- ```ctrnn```: CT-RNN
+- ```ctgru```: CT-GRU
+- ```wm```: NCP model
+
+Valid option for the ```--experiment_id``` argument is a number between 0 and 9 inclusively. For instance, 
+```
+python3 run_passive_test.py --model cnn --experiment_id 4
+```
+Runs the 4-th cross-testing evaluation of the feedforward CNN model.
+
+There are several other command-line options that control parameters like the sparsity level and size of the RNNs, learning rate, dropout rate, and so on.
+The hyperparameters used are reported in the table in the supplementary materials of the paper.
+
+The script ```run_passive_test.py``` creates a directory inside the ```passive_sessions``` folder for each model, and inside this directory, a sub-directory for each experiment id. Thus, in total, there will be ten sub-directories within each directory. 
+The python module ```list_passive_results.py``` summarizes the results logged in these directories, by averaging over the experiment ids.
+
+The logs created in our experiment runs are located in the ```pretrained_passive_models``` directory.
+To list all results of the passive evaluation run
+
+```python3 list_passive_results.py```
+
+inside the ```training_scripts``` directory.
+
+## Training models for the active evaluation
+
+The main file for training a model on the active training set is ```train_active_test.py```.
+Like with the passive evaluation, this module accepts the command line argument:
+```--model``` which defines the type of model. Valid values for this parameter are the same as for the passive evaluation script.
+
+For instance 
+```
+python3 train_active_test.py --model lstm
+```
+trains an LSTM model on the active data set. Like with the passive evaluation script, there are other command-line options to tune the hyperparameters. 
+
+Each run of this script will create a directory inside ```active_sessions```. Inside this directory, there will be a csv log file that records some training metrics throughout the training procedure. 
+In particular, after every training epoch, the weights will be stored, and training and validation loss recorded. 
+These logs represent the learning curves in the supplementary materials of the paper. 
+The weight-checkpoint used for evaluation on the real car was manually selected by a tradeoff between low validation loss and expected generalization, i.e., earlier epochs with similar validation loss are preferred over slightly lower validation losses after a large number of training epochs.
+
+The training logs and checkpoints created in our training setup are located in the ```pretrained_active_models``` directory (one weight-checkpoint for each epoch)
+The exact weights used for the active steering test are placed in the sub-directory ```pretrained_active_models/final_models```.
+
+## Analyzing the active test logs
+
+The ```active_test_analysis``` directory contains script to analyze and process the rosbag logs.
+In particular, the module ```driving_record.py``` contains code to count the number of crashes as well as compute secondary metrics such as lateral discomfort.
+The script ```export_images.py``` extracts the camera images, GPS readings, and auto mode switch as separate files in the form of numpy or csv files.
+These exported files can then be used to re-compute the internal state of the RNNs during driving.
+The code to do that is located in ```training_scripts/replay_internal_states.py```. 
+The traces of the internal RNN states are then used for the interpretability analysis and the video generation.
+
+
+## Perturbation Analysis
+
+The script located in ```SSIM_Crash_analysis/ssim_and_crash_plot.m```, computes the structural similarity index (SSIM) for the saliency maps when the input noise is increasing. It also plots the number of crashes witnessed during active testing, as a function of input noise variance, for the RNNs. Before running the script, you must: 
+1) make sure that the content of ```SSIM_Crash_analysis/saliency_maps``` is properly included in the path.
+2) make sure that the content of ```SSIM_Crash_analysis/aboxplot``` is properly included in the path. 
+
+## Lipschitzness Analysis
+
+The script located in ```Lipschitz_analysis/lipschitz_plots.m```, computes sorted maximum Lipschitz constant for NCPs, CNNs, CT-RNNs, and LSTMs. Data needed for running the scripts is located in the ```analysis_data`` directory.
+
+## Principle Component Analysis (PCA)
+
+The script located in ```PCA_analysis/PCA_explained_and_road_plots.m```, performs a PCA on the given RNN network activity during active testing. It outputs the variance explained of principle components and also projects the activity of PC 1 and PC2 on the road. Data needed for running the scripts is located in the ```analysis_data`` directory.
+
+
+## Neural Activity visualization for NCPs, LSTMs, CNNs, and CT-RNNs
+
+The script located in ```Neural_activity_analysis/plot_data_on_road.m```, plots the neural state activity of RNN compartments of the networks on the road on which the car was driven. For the NCP networks, the time-constant (coupling sensitivity) dynamics are also included. Data needed for running the scripts is located in the ```analysis_data`` directory.
+
